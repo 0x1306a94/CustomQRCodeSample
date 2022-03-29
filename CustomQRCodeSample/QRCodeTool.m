@@ -18,9 +18,10 @@
 
     @autoreleasepool {
         CIImage *originalImg = [self createOriginalCIImageWithString:str withCorrectionLevel:corLevel];
-        // 这行代码主要是为了,在断点时,可以通过quicklook 查看
-        UIImage *_image = [UIImage imageWithCIImage:originalImg];
         NSArray<NSArray<NSNumber *> *> *codePoints = [self getPixelsWithCIImage:originalImg];
+        // 这行代码主要是为了,在断点时,可以通过quicklook 查看
+        __unused UIImage *_image = [UIImage imageWithCIImage:originalImg];
+
         NSUInteger codeWidth = codePoints.firstObject.count;
         NSUInteger codeHeight = codePoints.count;
 
@@ -142,7 +143,7 @@
                         continue;
                     }
 
-//                    NSLog(@"%1f, %1f", point.x, point.y);
+                    //                    NSLog(@"%1f, %1f", point.x, point.y);
                     CGFloat x = point.x + drawBorderWidth;
                     CGFloat y = point.y + drawBorderWidth;
 
@@ -291,7 +292,7 @@
     // 将系统生成的二维码从 `CIImage` 转成 `CGImageRef`.
     CGImageRef imageRef = [self convertCIImage2CGImageForCIImage:ciimg];
 
-    UIImage *_image = [UIImage imageWithCGImage:imageRef];
+    __unused UIImage *_image = [UIImage imageWithCGImage:imageRef];
     CGFloat width = CGImageGetWidth(imageRef);
     CGFloat height = CGImageGetHeight(imageRef);
 

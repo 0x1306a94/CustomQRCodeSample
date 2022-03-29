@@ -18,7 +18,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="dZX-qw-WOE">
-                                <rect key="frame" x="20" y="261" width="374" height="374"/>
+                                <rect key="frame" x="60" y="301" width="294" height="294"/>
                                 <constraints>
                                     <constraint firstAttribute="width" secondItem="dZX-qw-WOE" secondAttribute="height" multiplier="1:1" id="inR-bI-Muz"/>
                                 </constraints>
@@ -27,8 +27,8 @@
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
-                            <constraint firstItem="dZX-qw-WOE" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" constant="20" id="3TH-lm-4Mt"/>
-                            <constraint firstAttribute="trailing" secondItem="dZX-qw-WOE" secondAttribute="trailing" constant="20" id="IPz-Su-Skg"/>
+                            <constraint firstItem="dZX-qw-WOE" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" constant="60" id="3TH-lm-4Mt"/>
+                            <constraint firstAttribute="trailing" secondItem="dZX-qw-WOE" secondAttribute="trailing" constant="60" id="IPz-Su-Skg"/>
                             <constraint firstItem="dZX-qw-WOE" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="YPr-4e-FiD"/>
                         </constraints>
                     </view>
