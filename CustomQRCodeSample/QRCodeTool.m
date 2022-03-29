@@ -98,7 +98,7 @@
         }
 
         UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
-        format.scale = 15;
+        format.scale = 20;
 
         CGFloat drawBorderWidth = 2;
         CGFloat canvasWidth = codeWidth - (2.0 * borderWidth) + (2 * drawBorderWidth);
