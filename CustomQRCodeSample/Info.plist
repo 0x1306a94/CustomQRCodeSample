@@ -23,5 +23,7 @@
 	</dict>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDarkContent</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>授权后可保存二维码的图片到您的本地相册</string>
 </dict>
 </plist>

@@ -1,0 +1,16 @@
+PODS:
+  - QRCode (0.0.1)
+
+DEPENDENCIES:
+  - QRCode (from `./qrencode/QRCode.podspec`)
+
+EXTERNAL SOURCES:
+  QRCode:
+    :path: "./qrencode/QRCode.podspec"
+
+SPEC CHECKSUMS:
+  QRCode: d22c7bd5df26fa311024e2a855bc08d74e642aa2
+
+PODFILE CHECKSUM: c85ab36a15de294b356e3c298e66aa1f2eb28884
+
+COCOAPODS: 1.10.2

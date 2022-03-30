@@ -7,20 +7,36 @@
 
 #import "QRCodeTool.h"
 
+#import "qrencode/QRCode.h"
+
 #import <CoreImage/CoreImage.h>
 
 #define RGB(r, g, b) [UIColor colorWithRed:(r / 255.0) green:(g / 255.0) blue:(b / 255.0) alpha:1.0]
+//#define RGB(r, g, b) UIColor.blackColor
+
 @implementation QRCodeTool
-+ (UIImage *)generateCodeForString:(nonnull NSString *)str withCorrectionLevel:(kQRCodeCorrectionLevel)corLevel {
++ (UIImage *)generateCodeForString:(nonnull NSString *)str withCorrectionLevel:(kQRCodeCorrectionLevel)corLevel drawType:(kQRCodeDrawType)drawType useBuiltin:(BOOL)useBuiltin {
     if (str.length == 0) {
         return nil;
     }
 
     @autoreleasepool {
-        CIImage *originalImg = [self createOriginalCIImageWithString:str withCorrectionLevel:corLevel];
-        NSArray<NSArray<NSNumber *> *> *codePoints = [self getPixelsWithCIImage:originalImg];
-        // 这行代码主要是为了,在断点时,可以通过quicklook 查看
-        __unused UIImage *_image = [UIImage imageWithCIImage:originalImg];
+
+        NSArray<NSArray<NSNumber *> *> *codePoints = nil;
+        if (useBuiltin) {
+            CIImage *originalImg = [self createOriginalCIImageWithString:str withCorrectionLevel:corLevel];
+            //            return [self scaleImage:originalImg toSize:CGSizeMake(200, 200)];
+            // 这行代码主要是为了,在断点时,可以通过quicklook 查看
+            __unused UIImage *_image = [UIImage imageWithCIImage:originalImg];
+            codePoints = [self getPixelsWithCIImage:originalImg];
+        } else {
+            QRCode *code = [QRCode codeWithString:str version:0 level:(QRCodeLevel)corLevel mode:QRCodeMode8BitData];
+            codePoints = [code.map.datas mutableCopy];
+        }
+
+        if (codePoints == nil) {
+            return nil;
+        }
 
         NSUInteger codeWidth = codePoints.firstObject.count;
         NSUInteger codeHeight = codePoints.count;
@@ -98,24 +114,9 @@
             }
         }
 
-        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
-        format.scale = 20;
-
-        CGFloat drawBorderWidth = 2;
-        CGFloat canvasWidth = codeWidth - (2.0 * borderWidth) + (2 * drawBorderWidth);
-        CGSize canvasSize = CGSizeMake(canvasWidth, canvasWidth);
-        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:canvasSize format:format];
-        UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull rendererContext) {
-            //            do {
-            //                UIBezierPath *path = [UIBezierPath bezierPathWithRect:rendererContext.format.bounds];
-            //                [UIColor.orangeColor setFill];
-            //                [path fill];
-            //            } while (0);
-
-            [self drawBigOrientationAngle:canvasWidth drawBorderWidth:drawBorderWidth gridWidth:gridWidth width:bigOrientationAngleWidth];
-            [self drawTinyOrientationAngle:canvasWidth drawBorderWidth:drawBorderWidth minX:tinyOrientationAngleMinX - borderWidth maxY:tinyOrientationAngleMaxY - borderWidth];
-
-            NSMutableArray<NSArray<NSNumber *> *> *fixCodePoints = [NSMutableArray<NSArray<NSNumber *> *> arrayWithCapacity:codeWidth - 2 * borderWidth];
+        NSMutableArray<NSArray<NSNumber *> *> *fixCodePoints = [codePoints mutableCopy];
+        if (borderWidth > 0) {
+            fixCodePoints = [NSMutableArray<NSArray<NSNumber *> *> arrayWithCapacity:codeWidth - 2 * borderWidth];
             for (NSArray<NSNumber *> *rows in codePoints) {
                 NSArray<NSNumber *> *fixRows = [rows subarrayWithRange:NSMakeRange(borderWidth, rows.count - 2 * borderWidth)];
                 [fixCodePoints addObject:fixRows];
@@ -124,16 +125,36 @@
             [fixCodePoints removeLastObject];
             [fixCodePoints removeObjectAtIndex:0];
 
-            NSUInteger _h = fixCodePoints.count;
-            NSUInteger _w = fixCodePoints.firstObject.count;
+            codeWidth = fixCodePoints.firstObject.count;
+            codeHeight = fixCodePoints.count;
+        }
+
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+        format.scale = 1;
+
+        CGFloat scale = 10;
+        CGFloat drawBorderWidth = 2;
+        CGFloat canvasWidth = (codeWidth + (2 * drawBorderWidth)) * scale;
+        CGSize canvasSize = CGSizeMake(canvasWidth, canvasWidth);
+        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:canvasSize format:format];
+        UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *_Nonnull rendererContext) {
+            do {
+                UIBezierPath *path = [UIBezierPath bezierPathWithRect:rendererContext.format.bounds];
+                [UIColor.whiteColor setFill];
+                [path fill];
+            } while (0);
+
+            [self drawBigOrientationAngle:canvasWidth / scale drawBorderWidth:drawBorderWidth gridWidth:gridWidth width:bigOrientationAngleWidth scale:scale drawType:drawType];
+
+            [self drawTinyOrientationAngle:canvasWidth / scale drawBorderWidth:drawBorderWidth minX:tinyOrientationAngleMinX - borderWidth maxY:tinyOrientationAngleMaxY - borderWidth scale:scale drawType:drawType];
 
             CGRect topLeftAngle = CGRectMake(0, 0, bigOrientationAngleWidth, bigOrientationAngleWidth);
-            CGRect topRightAngle = CGRectMake(_w - bigOrientationAngleWidth, 0, bigOrientationAngleWidth, bigOrientationAngleWidth);
-            CGRect bottomLeftAngle = CGRectMake(0, _h - bigOrientationAngleWidth, bigOrientationAngleWidth, bigOrientationAngleWidth);
+            CGRect topRightAngle = CGRectMake(codeWidth - bigOrientationAngleWidth, 0, bigOrientationAngleWidth, bigOrientationAngleWidth);
+            CGRect bottomLeftAngle = CGRectMake(0, codeHeight - bigOrientationAngleWidth, bigOrientationAngleWidth, bigOrientationAngleWidth);
 
-            for (NSUInteger yy = 0; yy < _h; yy++) {
+            for (NSUInteger yy = 0; yy < codeHeight; yy++) {
                 NSArray<NSNumber *> *rows = fixCodePoints[yy];
-                for (NSUInteger xx = 0; xx < _w; xx++) {
+                for (NSUInteger xx = 0; xx < codeWidth; xx++) {
                     BOOL value = [rows[xx] boolValue];
                     if (!value) {
                         continue;
@@ -143,12 +164,27 @@
                         continue;
                     }
 
-                    //                    NSLog(@"%1f, %1f", point.x, point.y);
-                    CGFloat x = point.x + drawBorderWidth;
-                    CGFloat y = point.y + drawBorderWidth;
+                    UIBezierPath *path = nil;
+                    if (drawType == kQRCodeDrawTypeCircle) {
+                        CGFloat centerX = point.x * scale + 0.5 * scale + drawBorderWidth * scale;
+                        CGFloat centerY = point.y * scale + 0.5 * scale + drawBorderWidth * scale;
+                        CGFloat radius = 0.5 * scale;  // - 2;
+                        CGFloat startAngle = 0;
+                        CGFloat endAngle = 2 * M_PI;
+                        path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
+                    } else {
+                        CGFloat x = point.x * scale + drawBorderWidth * scale;
+                        CGFloat y = point.y * scale + drawBorderWidth * scale;
+                        CGFloat w = gridWidth * scale;
+                        CGFloat h = w;
+                        path = [UIBezierPath bezierPathWithRect:CGRectMake(x, y, w, h)];
+                    }
+                    if (useBuiltin) {
+                        [RGB(0x61, 0x46, 0xfc) setFill];
+                    } else {
+                        [RGB(0xa1, 0x31, 0xcc) setFill];
+                    }
 
-                    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, 1, 1) cornerRadius:0.5];
-                    [RGB(0x61, 0x46, 0xfc) setFill];
                     [path fill];
                 }
             }
@@ -160,77 +196,230 @@
     return nil;
 }
 
-+ (void)drawBigOrientationAngle:(CGFloat)canvasWidth drawBorderWidth:(CGFloat)drawBorderWidth gridWidth:(CGFloat)gridWidth width:(CGFloat)width {
++ (void)drawBigOrientationAngle:(CGFloat)canvasWidth drawBorderWidth:(CGFloat)drawBorderWidth gridWidth:(CGFloat)gridWidth width:(CGFloat)width scale:(CGFloat)scale drawType:(kQRCodeDrawType)drawType {
     // 左上
     do {
-        CGFloat x = drawBorderWidth;
-        CGFloat y = drawBorderWidth;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
-        path.lineWidth = gridWidth;
-        [RGB(0xac, 0x07, 0xf5) setStroke];
-        [path stroke];
+
+        if (drawType == kQRCodeDrawTypeCircle) {
+            //            CGFloat x = drawBorderWidth * scale;
+            //            CGFloat y = drawBorderWidth * scale;
+            //            CGFloat w = width * scale;
+            //            CGFloat h = width * scale;
+            //            UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+
+            CGFloat centerX = (drawBorderWidth + width * 0.5) * scale;
+            CGFloat centerY = (drawBorderWidth + width * 0.5) * scale;
+            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat startAngle = 0;
+            CGFloat endAngle = 2 * M_PI;
+            UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
+
+            path.lineWidth = gridWidth * scale;
+            [RGB(0xac, 0x07, 0xf5) setStroke];
+            [path stroke];
+        } else {
+            UIBezierPath *path = [UIBezierPath bezierPath];
+            // 上
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = i * scale + drawBorderWidth * scale;
+                CGFloat y = drawBorderWidth * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 左
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = drawBorderWidth * scale;
+                CGFloat y = i * scale + drawBorderWidth * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 下
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = i * scale + drawBorderWidth * scale;
+                CGFloat y = (width - 1) * scale + drawBorderWidth * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 右
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = (width - 1) * scale + drawBorderWidth * scale;
+                CGFloat y = i * scale + drawBorderWidth * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            [RGB(0xac, 0x07, 0xf5) setFill];
+            [path fill];
+        }
+
     } while (0);
 
     // 右上
     do {
-        CGFloat x = canvasWidth - width - drawBorderWidth;
-        CGFloat y = drawBorderWidth;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
-        path.lineWidth = gridWidth;
-        [RGB(0xac, 0x07, 0xf5) setStroke];
-        [path stroke];
+
+        if (drawType == kQRCodeDrawTypeCircle) {
+            //            CGFloat x = (canvasWidth - width - drawBorderWidth) * scale;
+            //            CGFloat y = drawBorderWidth * scale;
+            //            CGFloat w = width * scale;
+            //            CGFloat h = width * scale;
+            //            UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+
+            CGFloat x = (canvasWidth - width - drawBorderWidth);
+            CGFloat y = drawBorderWidth;
+            CGFloat centerX = (x + width * 0.5) * scale;
+            CGFloat centerY = (y + width * 0.5) * scale;
+            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat startAngle = 0;
+            CGFloat endAngle = 2 * M_PI;
+            UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
+
+            path.lineWidth = gridWidth * scale;
+            [RGB(0xac, 0x07, 0xf5) setStroke];
+            [path stroke];
+        } else {
+            UIBezierPath *path = [UIBezierPath bezierPath];
+            CGFloat sx = (canvasWidth - width - drawBorderWidth);
+            CGFloat sy = drawBorderWidth;
+            // 上
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = (i + sx) * scale;
+                CGFloat y = drawBorderWidth * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 左边
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = sx * scale;
+                CGFloat y = (i + sy) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 下
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = (i + sx) * scale;
+                CGFloat y = (sy + width - 1) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 右
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = (sx + width - 1) * scale;
+                CGFloat y = (i + sy) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            [RGB(0xac, 0x07, 0xf5) setFill];
+            [path fill];
+        }
     } while (0);
 
     // 左下
     do {
-        CGFloat x = drawBorderWidth;
-        CGFloat y = canvasWidth - width - drawBorderWidth;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
-        path.lineWidth = gridWidth;
-        [RGB(0xac, 0x07, 0xf5) setStroke];
-        [path stroke];
+
+        if (drawType == kQRCodeDrawTypeCircle) {
+            //            CGFloat x = drawBorderWidth * scale;
+            //            CGFloat y = (canvasWidth - width - drawBorderWidth) * scale;
+            //            CGFloat w = width * scale;
+            //            CGFloat h = width * scale;
+            //            UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+
+            CGFloat x = drawBorderWidth;
+            CGFloat y = (canvasWidth - width - drawBorderWidth);
+            CGFloat centerX = (x + width * 0.5) * scale;
+            CGFloat centerY = (y + width * 0.5) * scale;
+            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat startAngle = 0;
+            CGFloat endAngle = 2 * M_PI;
+            UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
+            path.lineWidth = gridWidth * scale;
+            [RGB(0xac, 0x07, 0xf5) setStroke];
+            [path stroke];
+        } else {
+            UIBezierPath *path = [UIBezierPath bezierPath];
+
+            CGFloat sy = canvasWidth - width - drawBorderWidth;
+            // 上
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = i * scale + drawBorderWidth * scale;
+                CGFloat y = sy * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 左
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = drawBorderWidth * scale;
+                CGFloat y = (i + sy) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 下
+            for (NSInteger i = 0; i < width; i++) {
+                CGFloat x = i * scale + drawBorderWidth * scale;
+                CGFloat y = (sy + width - 1) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            // 右
+            for (NSInteger i = 1; i < width - 1; i++) {
+                CGFloat x = (width - 1) * scale + drawBorderWidth * scale;
+                CGFloat y = (i + sy) * scale;
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(x, y, scale, scale)]];
+            }
+
+            [RGB(0xac, 0x07, 0xf5) setFill];
+            [path fill];
+        }
+
     } while (0);
 }
 
-+ (void)drawTinyOrientationAngle:(CGFloat)canvasWidth drawBorderWidth:(CGFloat)drawBorderWidth minX:(CGFloat)minX maxY:(CGFloat)maxY {
++ (void)drawTinyOrientationAngle:(CGFloat)canvasWidth drawBorderWidth:(CGFloat)drawBorderWidth minX:(CGFloat)minX maxY:(CGFloat)maxY scale:(CGFloat)scale drawType:(kQRCodeDrawType)drawType {
 
-    CGFloat width = maxY - minX;
-    CGFloat paading = minX + drawBorderWidth;
+    CGFloat width = (maxY - minX);
+    CGFloat paading = (minX + drawBorderWidth);
     // 左上
     do {
-        CGFloat x = paading;
-        CGFloat y = paading;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        CGFloat x = paading * scale;
+        CGFloat y = paading * scale;
+        CGFloat w = width * scale;
+        CGFloat h = width * scale;
+        UIBezierPath *path = nil;
+        if (drawType == kQRCodeDrawTypeCircle) {
+            path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        } else {
+            path = [UIBezierPath bezierPathWithRect:CGRectMake(x, y, w, h)];
+        }
         [RGB(0x3f, 0x52, 0xe0) setFill];
         [path fill];
     } while (0);
 
     // 右上
     do {
-        CGFloat x = canvasWidth - paading - width;
-        CGFloat y = paading;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        CGFloat x = (canvasWidth - paading - width) * scale;
+        CGFloat y = paading * scale;
+        CGFloat w = width * scale;
+        CGFloat h = width * scale;
+        UIBezierPath *path = nil;
+        if (drawType == kQRCodeDrawTypeCircle) {
+            path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        } else {
+            path = [UIBezierPath bezierPathWithRect:CGRectMake(x, y, w, h)];
+        }
         [RGB(0x3f, 0x52, 0xe0) setFill];
         [path fill];
     } while (0);
 
     // 左下
     do {
-        CGFloat x = paading;
-        CGFloat y = canvasWidth - paading - width;
-        CGFloat w = width;
-        CGFloat h = width;
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        CGFloat x = paading * scale;
+        CGFloat y = (canvasWidth - paading - width) * scale;
+        CGFloat w = width * scale;
+        CGFloat h = width * scale;
+        UIBezierPath *path = nil;
+        if (drawType == kQRCodeDrawTypeCircle) {
+            path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(x, y, w, h) cornerRadius:w * 0.5];
+        } else {
+            path = [UIBezierPath bezierPathWithRect:CGRectMake(x, y, w, h)];
+        }
         [RGB(0x3f, 0x52, 0xe0) setFill];
         [path fill];
     } while (0);
@@ -262,6 +451,36 @@
 
     CIImage *outputImage = [filter outputImage];
     return outputImage;
+}
+
+// 缩放图片(生成高质量图片）
++ (UIImage *)scaleImage:(CIImage *)image toSize:(CGSize)size {
+    if (!image) {
+        return nil;
+    }
+    //! 将CIImage转成CGImageRef
+    CGRect integralRect = image.extent;  // CGRectIntegral(image.extent);// 将rect取整后返回，origin取舍，size取入
+    CGImageRef imageRef = [[CIContext context] createCGImage:image fromRect:integralRect];
+
+    //! 创建上下文
+    CGFloat sideScale = fminf(size.width / integralRect.size.width, size.width / integralRect.size.height) * [UIScreen mainScreen].scale;  // 计算需要缩放的比例
+    size_t contextRefWidth = ceilf(integralRect.size.width * sideScale);
+    size_t contextRefHeight = ceilf(integralRect.size.height * sideScale);
+    CGContextRef contextRef = CGBitmapContextCreate(nil, contextRefWidth, contextRefHeight, 8, 0, CGColorSpaceCreateDeviceGray(), (CGBitmapInfo)kCGImageAlphaNone);  // 灰度、不透明
+    CGContextSetInterpolationQuality(contextRef, kCGInterpolationNone);                                                                                              // 设置上下文无插值
+    CGContextScaleCTM(contextRef, sideScale, sideScale);                                                                                                             // 设置上下文缩放
+    CGContextDrawImage(contextRef, integralRect, imageRef);                                                                                                          // 在上下文中的integralRect中绘制imageRef
+
+    //! 从上下文中获取CGImageRef
+    CGImageRef scaledImageRef = CGBitmapContextCreateImage(contextRef);
+
+    CGContextRelease(contextRef);
+    CGImageRelease(imageRef);
+
+    //! 将CGImageRefc转成UIImage
+    UIImage *scaledImage = [UIImage imageWithCGImage:scaledImageRef scale:[UIScreen mainScreen].scale orientation:UIImageOrientationUp];
+
+    return scaledImage;
 }
 
 // 将 `CIImage` 转成 `CGImage`

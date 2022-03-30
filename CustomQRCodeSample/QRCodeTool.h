@@ -14,10 +14,15 @@ typedef NS_ENUM(NSInteger, kQRCodeCorrectionLevel) {
     kQRCodeCorrectionLevelHight,     // 高纠正率.
 };
 
+typedef NS_ENUM(NSInteger, kQRCodeDrawType) {
+    kQRCodeDrawTypeSquare,  // 正方形.
+    kQRCodeDrawTypeCircle,  // 圆.
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface QRCodeTool : NSObject
-+ (UIImage *_Nullable)generateCodeForString:(nonnull NSString *)str withCorrectionLevel:(kQRCodeCorrectionLevel)corLevel;
++ (UIImage *_Nullable)generateCodeForString:(nonnull NSString *)str withCorrectionLevel:(kQRCodeCorrectionLevel)corLevel drawType:(kQRCodeDrawType)drawType useBuiltin:(BOOL)useBuiltin;
 @end
 
 NS_ASSUME_NONNULL_END
