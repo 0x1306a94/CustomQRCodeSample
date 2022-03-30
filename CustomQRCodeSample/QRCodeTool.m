@@ -209,7 +209,7 @@
 
             CGFloat centerX = (drawBorderWidth + width * 0.5) * scale;
             CGFloat centerY = (drawBorderWidth + width * 0.5) * scale;
-            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat radius = ((width - gridWidth) * 0.5) * scale;
             CGFloat startAngle = 0;
             CGFloat endAngle = 2 * M_PI;
             UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
@@ -267,7 +267,7 @@
             CGFloat y = drawBorderWidth;
             CGFloat centerX = (x + width * 0.5) * scale;
             CGFloat centerY = (y + width * 0.5) * scale;
-            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat radius = ((width - gridWidth) * 0.5) * scale;
             CGFloat startAngle = 0;
             CGFloat endAngle = 2 * M_PI;
             UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
@@ -326,7 +326,7 @@
             CGFloat y = (canvasWidth - width - drawBorderWidth);
             CGFloat centerX = (x + width * 0.5) * scale;
             CGFloat centerY = (y + width * 0.5) * scale;
-            CGFloat radius = (width * 0.5 - gridWidth * 0.5) * scale;
+            CGFloat radius = ((width - gridWidth) * 0.5) * scale;
             CGFloat startAngle = 0;
             CGFloat endAngle = 2 * M_PI;
             UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(centerX, centerY) radius:radius startAngle:startAngle endAngle:endAngle clockwise:YES];
